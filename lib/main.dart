@@ -1,9 +1,12 @@
+// main.dart (Updated to properly initialize DI)
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:todo_app/app.dart';
 import 'package:todo_app/bloc_observer.dart';
+import 'package:todo_app/error_app.dart';
 import 'package:todo_app/src/core/services/notification_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'injection_container.dart' as di;
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
     FlutterLocalNotificationsPlugin();
@@ -11,15 +14,36 @@ final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize timezone for notifications
-  NotificationService.initializeTimeZone();
+  try {
+    // Initialize dependency injection and wait for completion
+    print('Initializing dependency injection...');
+    await di.init();
+    print('Dependency injection initialized successfully');
 
-  // Set up BlocObserver for debugging
-  Bloc.observer = AppBlocObserver();
+    // Initialize timezone for notifications
+    NotificationService.initializeTimeZone();
 
-  // Updated initialization settings
-  const androidInitializationSettings =
-      AndroidInitializationSettings('@mipmap/ic_launcher');
+    // Set up BlocObserver for debugging
+    Bloc.observer = AppBlocObserver();
+
+    // Initialize notifications
+    await _initializeNotifications();
+
+    print('Starting app...');
+    runApp(const ToDoApp());
+  } catch (e, stackTrace) {
+    print('Error during app initialization: $e');
+    print('Stack trace: $stackTrace');
+
+    // Show error app
+    runApp(ErrorApp(error: e.toString()));
+  }
+}
+
+Future<void> _initializeNotifications() async {
+  const androidInitializationSettings = AndroidInitializationSettings(
+    '@mipmap/ic_launcher',
+  );
 
   const darwinInitializationSettings = DarwinInitializationSettings(
     requestAlertPermission: true,
@@ -37,11 +61,8 @@ void main() async {
     initializationSettings,
     onDidReceiveNotificationResponse: onDidReceiveNotificationResponse,
   );
-
-  runApp(const TodoApp());
 }
 
-// Updated notification response handler
 void onDidReceiveNotificationResponse(NotificationResponse response) async {
   final String? payload = response.payload;
   if (payload != null) {

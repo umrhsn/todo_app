@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:todo_app/db_cubit.dart';
-import 'package:todo_app/db_state.dart';
 import 'package:todo_app/src/config/routes/app_routes.dart';
 import 'package:todo_app/src/core/services/date_time_service.dart';
 import 'package:todo_app/src/core/services/notification_service.dart';
@@ -138,18 +137,33 @@ class _AddTaskContentState extends State<AddTaskContent> {
                         Row(
                           children: [
                             buildStartTimeField(
-                                startTimeController, hour, minute, context),
+                              startTimeController,
+                              hour,
+                              minute,
+                              context,
+                            ),
                             const SizedBox(width: 20),
-                            buildEndTimeField(endTimeController, nextHour,
-                                minute, context, hour),
+                            buildEndTimeField(
+                              endTimeController,
+                              nextHour,
+                              minute,
+                              context,
+                              hour,
+                            ),
                           ],
                         ),
                         const SizedBox(height: 25),
-                        buildReminderField(remindController, context,
-                            addTaskReminderMenuItems),
+                        buildReminderField(
+                          remindController,
+                          context,
+                          addTaskReminderMenuItems,
+                        ),
                         const SizedBox(height: 25),
                         buildRepeatField(
-                            repeatController, context, addTaskRepeatMenuItems),
+                          repeatController,
+                          context,
+                          addTaskRepeatMenuItems,
+                        ),
                       ],
                     ),
                   ),
@@ -167,61 +181,76 @@ class _AddTaskContentState extends State<AddTaskContent> {
   }
 
   BlocBuilder<DatabaseCubit, DatabaseState> buildButton(
-      TextEditingController titleController) {
+    TextEditingController titleController,
+  ) {
     return BlocBuilder<DatabaseCubit, DatabaseState>(
       builder: (BuildContext context, state) {
         return MyButtonWidget(
-            onPressed: () {
-              if (_timeDifferenceBtwStartNow!.isNegative || _timeDifferenceBtwStartNow == null) {
-                Fluttertoast.showToast(
-                    msg:
-                        "You can't set the notification to a negative time difference",
-                    toastLength: Toast.LENGTH_LONG);
-                return;
-              }
-              NotificationService(_dateTime)
-                  .scheduleAlarm(timeDifference: _timeDifferenceBtwStartNow!);
+          onPressed: () {
+            if (_timeDifferenceBtwStartNow!.isNegative ||
+                _timeDifferenceBtwStartNow == null) {
               Fluttertoast.showToast(
-                  msg:
-                      // FIXME: need a better logic for calculating time difference, and making endTime and startTime listen to day value which they don't
-                      'task "${titleController.text}" is set for ${_timeDifferenceBtwStartNow!.inMinutes} minutes from now.',
-                  toastLength: Toast.LENGTH_LONG);
-              DatabaseCubit.get(context).createTask();
-              Navigator.pushNamed(context, Routes.initialRoute);
-            },
-            label: AppStrings.createTaskButtonLabel);
+                msg:
+                    "You can't set the notification to a negative time difference",
+                toastLength: Toast.LENGTH_LONG,
+              );
+              return;
+            }
+            NotificationService(
+              _dateTime,
+            ).scheduleAlarm(timeDifference: _timeDifferenceBtwStartNow!);
+            Fluttertoast.showToast(
+              msg:
+                  // FIXME: need a better logic for calculating time difference, and making endTime and startTime listen to day value which they don't
+                  'task "${titleController.text}" is set for ${_timeDifferenceBtwStartNow!.inMinutes} minutes from now.',
+              toastLength: Toast.LENGTH_LONG,
+            );
+            DatabaseCubit.get(context).createTask();
+            Navigator.pushNamed(context, Routes.initialRoute);
+          },
+          label: AppStrings.createTaskButtonLabel,
+        );
       },
     );
   }
 
   TextFieldWidget buildRepeatField(
-      TextEditingController repeatController,
-      BuildContext context,
-      List<PopupMenuItem<dynamic>> addTaskRepeatMenuItems) {
+    TextEditingController repeatController,
+    BuildContext context,
+    List<PopupMenuItem<dynamic>> addTaskRepeatMenuItems,
+  ) {
     return TextFieldWidget(
       controller: repeatController,
       label: AppStrings.repeatTextFieldLabel,
       hintText: _selectedRepeat,
-      suffixIconOnTapDown: (details) => PopupMenuService(context)
-          .showPopupMenuAtPosition(details, addTaskRepeatMenuItems),
+      suffixIconOnTapDown: (details) => PopupMenuService(
+        context,
+      ).showPopupMenuAtPosition(details, addTaskRepeatMenuItems),
     );
   }
 
   TextFieldWidget buildReminderField(
-      TextEditingController remindController,
-      BuildContext context,
-      List<PopupMenuItem<dynamic>> addTaskReminderMenuItems) {
+    TextEditingController remindController,
+    BuildContext context,
+    List<PopupMenuItem<dynamic>> addTaskReminderMenuItems,
+  ) {
     return TextFieldWidget(
       controller: remindController,
       label: AppStrings.remindTextFieldLabel,
       hintText: '10 minutes early',
-      suffixIconOnTapDown: (details) => PopupMenuService(context)
-          .showPopupMenuAtPosition(details, addTaskReminderMenuItems),
+      suffixIconOnTapDown: (details) => PopupMenuService(
+        context,
+      ).showPopupMenuAtPosition(details, addTaskReminderMenuItems),
     );
   }
 
-  Expanded buildEndTimeField(TextEditingController endTimeController,
-      String nextHour, String minute, BuildContext context, String hour) {
+  Expanded buildEndTimeField(
+    TextEditingController endTimeController,
+    String nextHour,
+    String minute,
+    BuildContext context,
+    String hour,
+  ) {
     return Expanded(
       child: TextFieldWidget(
         controller: endTimeController,
@@ -231,25 +260,31 @@ class _AddTaskContentState extends State<AddTaskContent> {
         // FIXME: An endTime with a -ve time difference from startTime shouldn't be accepted
         onTap: () async {
           _endTime = await DateTimeService(dateTime: _dateTime).setTimeText(
-              context,
-              controller: endTimeController,
-              hour: hour,
-              minute: minute);
+            context,
+            controller: endTimeController,
+            hour: hour,
+            minute: minute,
+          );
           setState(() {
             _dateTime = _endTime ?? _dateTime;
             _timeDifferenceBtwEndStart = _endTime!.difference(_startTime!);
           });
           debugPrint('endTime = $_endTime}');
           debugPrint(
-              '_endStartTimeDifference = ${_timeDifferenceBtwEndStart!.isNegative}');
+            '_endStartTimeDifference = ${_timeDifferenceBtwEndStart!.isNegative}',
+          );
         },
         keyboardType: TextInputType.datetime,
       ),
     );
   }
 
-  Expanded buildStartTimeField(TextEditingController startTimeController,
-      String hour, String minute, BuildContext context) {
+  Expanded buildStartTimeField(
+    TextEditingController startTimeController,
+    String hour,
+    String minute,
+    BuildContext context,
+  ) {
     return Expanded(
       child: TextFieldWidget(
         controller: startTimeController,
@@ -258,10 +293,11 @@ class _AddTaskContentState extends State<AddTaskContent> {
         suffixIcon: Icons.access_time_rounded,
         onTap: () async {
           _startTime = await DateTimeService(dateTime: _dateTime).setTimeText(
-              context,
-              controller: startTimeController,
-              hour: hour,
-              minute: minute);
+            context,
+            controller: startTimeController,
+            hour: hour,
+            minute: minute,
+          );
           setState(() {
             _dateTime = _startTime ?? _dateTime;
             _timeDifferenceBtwStartNow = _startTime!.difference(DateTime.now());
@@ -278,14 +314,17 @@ class _AddTaskContentState extends State<AddTaskContent> {
   }
 
   TextFieldWidget buildDateField(
-      TextEditingController dateController, BuildContext context) {
+    TextEditingController dateController,
+    BuildContext context,
+  ) {
     return TextFieldWidget(
       controller: dateController,
       label: AppStrings.dateTextFieldLabel,
       hintText: '${_dateTime.year}-${_dateTime.month}-${_dateTime.day}',
       onTap: () async {
-        var newDate = await DateTimeService(dateTime: _dateTime)
-            .setDateText(context, dateController);
+        var newDate = await DateTimeService(
+          dateTime: _dateTime,
+        ).setDateText(context, dateController);
         setState(() => _dateTime = newDate ?? _dateTime);
       },
       keyboardType: TextInputType.datetime,

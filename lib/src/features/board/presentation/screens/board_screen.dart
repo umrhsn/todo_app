@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:todo_app/db_cubit.dart';
-import 'package:todo_app/db_state.dart';
 import 'package:todo_app/src/config/routes/app_routes.dart';
 import 'package:todo_app/src/core/utils/app_constants.dart';
 import 'package:todo_app/src/core/utils/app_strings.dart';
 import 'package:todo_app/src/core/widgets/app_bar_widget.dart';
+import 'package:todo_app/src/features/board/presentation/cubit/board_cubit.dart';
 import 'package:todo_app/src/features/board/presentation/widgets/board_content.dart';
 
 class BoardScreen extends StatefulWidget {
@@ -16,12 +15,13 @@ class BoardScreen extends StatefulWidget {
 }
 
 class _BoardScreenState extends State<BoardScreen> {
-  Widget _buildBodyContent() {
-    return BlocBuilder<DatabaseCubit, DatabaseState>(
-      builder: (context, state) {
-        return BoardContent();
-      },
-    );
+  @override
+  void initState() {
+    super.initState();
+    // Load initial tasks
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<BoardCubit>().loadAllTasks();
+    });
   }
 
   @override
@@ -38,10 +38,7 @@ class _BoardScreenState extends State<BoardScreen> {
 
     return DefaultTabController(
       length: AppConstants.boardTabViewsList.length,
-      child: Scaffold(
-        appBar: appBar,
-        body: _buildBodyContent(),
-      ),
+      child: Scaffold(appBar: appBar, body: const BoardContent()),
     );
   }
 }

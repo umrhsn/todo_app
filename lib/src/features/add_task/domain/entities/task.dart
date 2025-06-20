@@ -1,3 +1,4 @@
+// domain/entities/task.dart
 import 'package:equatable/equatable.dart';
 
 class Task extends Equatable {
@@ -8,11 +9,12 @@ class Task extends Equatable {
   final String endTime;
   final String reminder;
   final String repeatInterval;
-  final String color;
-  bool isCompleted;
-  bool isFavorite;
+  final int colorIndex;
+  final bool isCompleted;
+  final bool isFavorite;
+  final DateTime? createdAt;
 
-  Task({
+  const Task({
     required this.id,
     required this.title,
     required this.date,
@@ -20,12 +22,52 @@ class Task extends Equatable {
     required this.endTime,
     required this.reminder,
     required this.repeatInterval,
-    required this.color,
+    required this.colorIndex,
     required this.isCompleted,
     required this.isFavorite,
+    this.createdAt,
   });
 
+  Task copyWith({
+    int? id,
+    String? title,
+    String? date,
+    String? startTime,
+    String? endTime,
+    String? reminder,
+    String? repeatInterval,
+    int? colorIndex,
+    bool? isCompleted,
+    bool? isFavorite,
+    DateTime? createdAt,
+  }) {
+    return Task(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      date: date ?? this.date,
+      startTime: startTime ?? this.startTime,
+      endTime: endTime ?? this.endTime,
+      reminder: reminder ?? this.reminder,
+      repeatInterval: repeatInterval ?? this.repeatInterval,
+      colorIndex: colorIndex ?? this.colorIndex,
+      isCompleted: isCompleted ?? this.isCompleted,
+      isFavorite: isFavorite ?? this.isFavorite,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
   @override
-  // TODO: implement props
-  List<Object?> get props => [id];
+  List<Object?> get props => [
+    id,
+    title,
+    date,
+    startTime,
+    endTime,
+    reminder,
+    repeatInterval,
+    colorIndex,
+    isCompleted,
+    isFavorite,
+    createdAt,
+  ];
 }
