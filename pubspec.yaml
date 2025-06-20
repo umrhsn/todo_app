@@ -1,0 +1,43 @@
+name: todo_app
+description: A new Flutter project.
+
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.8.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  flutter_bloc: ^9.1.1
+  equatable: ^2.0.7
+  flutter_screenutil: ^5.9.3
+  date_picker_timeline: ^1.2.7
+  sqflite: ^2.4.2
+  flutter_alarm_clock: ^0.1.2
+  flutter_local_notifications: ^19.2.1
+  fluttertoast: ^8.2.12
+  timezone: ^0.10.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/todo_icon.png
+
+  fonts:
+    - family: Product Sans
+      fonts:
+        - asset: assets/fonts/Product Sans Bold.ttf
+        - asset: assets/fonts/Product Sans Bold Italic.ttf
+        - asset: assets/fonts/Product Sans Italic.ttf
+        - asset: assets/fonts/Product Sans Regular.ttf
+          style: italic

@@ -1,0 +1,50 @@
+import 'package:date_picker_timeline/date_picker_widget.dart';
+import 'package:flutter/material.dart';
+import 'package:todo_app/src/core/utils/app_colors.dart';
+import 'package:todo_app/src/core/utils/media_query_values.dart';
+
+class DatePickerWidget extends StatefulWidget {
+  DatePickerWidget({
+    super.key,
+    required this.startDate,
+    required this.selectedDate,
+    required this.initialSelectedDate,
+  });
+
+  DateTime startDate;
+  DateTime selectedDate;
+  DateTime initialSelectedDate;
+
+  @override
+  State<DatePickerWidget> createState() => _DatePickerWidgetState();
+}
+
+class _DatePickerWidgetState extends State<DatePickerWidget> {
+  @override
+  Widget build(BuildContext context) {
+    bool isLight = context.platformBrightness == Brightness.light;
+    Color textColor = isLight ? Colors.black : Colors.white;
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 8, right: 8, left: 8),
+      child: DatePicker(
+        widget.startDate,
+        height: 80,
+        initialSelectedDate: widget.initialSelectedDate,
+        // TODO: make it the date of the first task added
+        selectionColor:
+            isLight ? AppColors.primaryLight : AppColors.primaryDark,
+        selectedTextColor: Colors.white,
+        dayTextStyle: TextStyle(fontSize: 10, color: textColor),
+        monthTextStyle: TextStyle(fontSize: 10, color: textColor),
+        dateTextStyle: TextStyle(fontSize: 15, color: textColor),
+        onDateChange: (date) {
+          // New date selected
+          setState(() {
+            widget.selectedDate = date;
+          });
+        },
+      ),
+    );
+  }
+}
