@@ -31,6 +31,17 @@ class BoardTabChanged extends BoardState {
   List<Object> get props => [tabType];
 }
 
+class BoardTaskUpdated extends BoardState {
+  final int taskId;
+  final String updateType;
+  final dynamic value;
+
+  const BoardTaskUpdated(this.taskId, this.updateType, this.value);
+
+  @override
+  List<Object> get props => [taskId, updateType, value];
+}
+
 class BoardTaskDeleted extends BoardState {
   final int taskId;
 

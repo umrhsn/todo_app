@@ -12,7 +12,7 @@ import 'package:todo_app/src/features/schedule/presentation/cubit/schedule_cubit
 import 'injection_container.dart' as di;
 
 class ToDoApp extends StatelessWidget {
-  const ToDoApp({Key? key}) : super(key: key);
+  const ToDoApp({super.key});
 
   @override
   Widget build(BuildContext context) {

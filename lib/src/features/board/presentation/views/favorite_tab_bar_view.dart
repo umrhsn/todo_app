@@ -24,6 +24,6 @@ class _FavoriteTabBarViewState extends State<FavoriteTabBarView> {
 
   @override
   Widget build(BuildContext context) {
-    return const TabViewWidget();
+    return const TabViewWidget(tabType: BoardTabType.favorite);
   }
 }

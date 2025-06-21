@@ -1,4 +1,5 @@
-// presentation/cubit/schedule_cubit.dart
+// presentation/cubit/schedule_cubit.dart (Enhanced debugging and fixed data flow)
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:todo_app/src/features/add_task/domain/entities/task.dart';
@@ -18,13 +19,19 @@ class ScheduleCubit extends Cubit<ScheduleState> {
     required this.getTasksByDateUseCase,
     required this.getTasksByDateRangeUseCase,
     required this.updateTaskCompletionUseCase,
-  }) : super(ScheduleInitial());
+  }) : super(ScheduleInitial()) {
+    debugPrint('🏗️ ScheduleCubit: Constructor called');
+  }
 
   static ScheduleCubit get(context) => BlocProvider.of<ScheduleCubit>(context);
 
-  DateTime selectedDate = DateTime.now();
-  List<Task> currentTasks = [];
-  Map<String, List<Task>> weekTasks = {};
+  DateTime _selectedDate = DateTime.now();
+  List<Task> _currentTasks = [];
+  Map<String, List<Task>> _weekTasks = {};
+
+  DateTime get selectedDate => _selectedDate;
+
+  List<Task> get currentTasks => _currentTasks;
 
   String get formattedSelectedDate {
     const days = [
@@ -51,29 +58,51 @@ class ScheduleCubit extends Cubit<ScheduleState> {
       'Dec',
     ];
 
-    return '${days[selectedDate.weekday % 7]}, ${selectedDate.day} ${months[selectedDate.month - 1]} ${selectedDate.year}';
+    final weekday = _selectedDate.weekday == 7 ? 0 : _selectedDate.weekday;
+    return '${days[weekday]}, ${_selectedDate.day} ${months[_selectedDate.month - 1]} ${_selectedDate.year}';
   }
 
   Future<void> loadTasksForDate(DateTime date) async {
     try {
+      debugPrint(
+        '🔄 ScheduleCubit: Starting loadTasksForDate for ${date.toString()}',
+      );
       emit(ScheduleLoading());
-      selectedDate = date;
+      _selectedDate = date;
 
       final dateString = _formatDateString(date);
+      debugPrint('📅 ScheduleCubit: Formatted date string: $dateString');
+
+      // Call the use case
+      debugPrint('🔄 ScheduleCubit: Calling getTasksByDateUseCase...');
       final tasks = await getTasksByDateUseCase(dateString);
 
-      currentTasks = tasks;
+      debugPrint('✅ ScheduleCubit: Use case returned ${tasks.length} tasks');
+      for (var task in tasks) {
+        debugPrint('📋 Task: ${task.id} - ${task.title} (${task.date})');
+      }
 
-      emit(
-        ScheduleTasksLoaded(ScheduleDay.fromTasks(date, tasks), selectedDate),
+      _currentTasks = tasks;
+
+      final scheduleDay = ScheduleDay.fromTasks(date, tasks);
+      debugPrint(
+        '📊 ScheduleCubit: Created ScheduleDay with ${scheduleDay.totalCount} tasks',
       );
-    } catch (e) {
-      emit(ScheduleError(e.toString()));
+
+      emit(ScheduleTasksLoaded(scheduleDay, _selectedDate));
+      debugPrint('✅ ScheduleCubit: Emitted ScheduleTasksLoaded state');
+    } catch (e, stackTrace) {
+      debugPrint('❌ ScheduleCubit: Error in loadTasksForDate: $e');
+      debugPrint('❌ ScheduleCubit: Stack trace: $stackTrace');
+      emit(ScheduleError('Failed to load tasks: $e'));
     }
   }
 
   Future<void> loadTasksForWeek(DateTime startOfWeek) async {
     try {
+      debugPrint(
+        '🔄 ScheduleCubit: Loading tasks for week starting: $startOfWeek',
+      );
       emit(ScheduleLoading());
 
       final endOfWeek = startOfWeek.add(const Duration(days: 6));
@@ -82,83 +111,97 @@ class ScheduleCubit extends Cubit<ScheduleState> {
         endOfWeek,
       );
 
-      weekTasks = tasksByDate;
+      _weekTasks = tasksByDate;
+
+      debugPrint(
+        '✅ ScheduleCubit: Loaded week tasks for ${tasksByDate.length} days',
+      );
 
       emit(ScheduleWeekLoaded(tasksByDate, startOfWeek));
     } catch (e) {
-      emit(ScheduleError(e.toString()));
+      debugPrint('❌ ScheduleCubit: Error loading week tasks: $e');
+      emit(ScheduleError('Failed to load week tasks: $e'));
     }
   }
 
   Future<void> toggleTaskCompletion(int taskId, bool isCompleted) async {
     try {
-      // Optimistic update
-      final taskIndex = currentTasks.indexWhere((task) => task.id == taskId);
-      if (taskIndex != -1) {
-        final updatedTask = currentTasks[taskIndex].copyWith(
-          isCompleted: isCompleted,
-        );
-        currentTasks[taskIndex] = updatedTask;
+      debugPrint(
+        '🔄 ScheduleCubit: Toggling task $taskId completion to $isCompleted',
+      );
 
-        emit(
-          ScheduleTasksLoaded(
-            ScheduleDay.fromTasks(selectedDate, currentTasks),
-            selectedDate,
-          ),
-        );
-      }
+      // Optimistic update
+      _updateTaskInCurrentList(
+        taskId,
+        (task) => task.copyWith(isCompleted: isCompleted),
+      );
+      emit(
+        ScheduleTasksLoaded(
+          ScheduleDay.fromTasks(_selectedDate, _currentTasks),
+          _selectedDate,
+        ),
+      );
 
       // Update in repository
       await updateTaskCompletionUseCase(taskId, isCompleted);
 
+      debugPrint('✅ ScheduleCubit: Task completion updated successfully');
+
       // Reload to ensure consistency
-      await loadTasksForDate(selectedDate);
+      await loadTasksForDate(_selectedDate);
     } catch (e) {
+      debugPrint('❌ ScheduleCubit: Error toggling task completion: $e');
       // Revert optimistic update on error
-      await loadTasksForDate(selectedDate);
-      emit(ScheduleError('Failed to update task: ${e.toString()}'));
+      await loadTasksForDate(_selectedDate);
+      emit(ScheduleError('Failed to update task: $e'));
     }
   }
 
   void setSelectedDate(DateTime date) {
-    selectedDate = date;
-    emit(ScheduleDateChanged(date));
-  }
-
-  Future<void> refreshCurrentDate() async {
-    await loadTasksForDate(selectedDate);
-  }
-
-  // Helper methods
-  String _formatDateString(DateTime date) {
-    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-  }
-
-  Task? getTaskById(int id) {
-    try {
-      return currentTasks.firstWhere((task) => task.id == id);
-    } catch (e) {
-      return null;
+    debugPrint('📅 ScheduleCubit: setSelectedDate called with: $date');
+    if (_selectedDate != date) {
+      _selectedDate = date;
+      emit(ScheduleDateChanged(date));
+      loadTasksForDate(date);
+    } else {
+      debugPrint('📅 ScheduleCubit: Date unchanged, not reloading');
     }
   }
 
-  List<Task> getTasksForDate(DateTime date) {
-    final dateString = _formatDateString(date);
-    return weekTasks[dateString] ?? [];
+  Future<void> refreshCurrentDate() async {
+    debugPrint(
+      '🔄 ScheduleCubit: Refreshing tasks for current date: $_selectedDate',
+    );
+    await loadTasksForDate(_selectedDate);
+  }
+
+  // Helper methods
+  void _updateTaskInCurrentList(int taskId, Task Function(Task) update) {
+    final index = _currentTasks.indexWhere((task) => task.id == taskId);
+    if (index != -1) {
+      _currentTasks[index] = update(_currentTasks[index]);
+    }
+  }
+
+  String _formatDateString(DateTime date) {
+    final formatted =
+        '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+    debugPrint('📅 ScheduleCubit: _formatDateString: $date -> $formatted');
+    return formatted;
   }
 
   // Statistics
-  int get totalTasksForDay => currentTasks.length;
+  int get totalTasksForDay => _currentTasks.length;
 
   int get completedTasksForDay =>
-      currentTasks.where((task) => task.isCompleted).length;
+      _currentTasks.where((task) => task.isCompleted).length;
 
   int get pendingTasksForDay => totalTasksForDay - completedTasksForDay;
 
   double get completionPercentage =>
       totalTasksForDay > 0 ? completedTasksForDay / totalTasksForDay : 0.0;
 
-  bool get hasTasksForDay => currentTasks.isNotEmpty;
+  bool get hasTasksForDay => _currentTasks.isNotEmpty;
 
   bool get hasCompletedAllTasks =>
       totalTasksForDay > 0 && completedTasksForDay == totalTasksForDay;

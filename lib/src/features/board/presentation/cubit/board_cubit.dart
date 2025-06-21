@@ -1,14 +1,15 @@
-// presentation/cubit/board_cubit.dart
+// presentation/cubit/board_cubit.dart (Fixed with comprehensive debugging)
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:todo_app/src/features/add_task/domain/entities/task.dart';
-import 'package:todo_app/src/features/add_task/domain/use_cases/delete_task_use_case.dart';
 import 'package:todo_app/src/features/add_task/domain/use_cases/get_all_tasks_use_case.dart';
 import 'package:todo_app/src/features/add_task/domain/use_cases/get_completed_tasks_use_case.dart';
-import 'package:todo_app/src/features/add_task/domain/use_cases/get_favorite_tasks_use_case.dart';
 import 'package:todo_app/src/features/add_task/domain/use_cases/get_uncompleted_tasks_use_case.dart';
+import 'package:todo_app/src/features/add_task/domain/use_cases/get_favorite_tasks_use_case.dart';
 import 'package:todo_app/src/features/add_task/domain/use_cases/update_task_completion_use_case.dart';
 import 'package:todo_app/src/features/add_task/domain/use_cases/update_task_favorite_use_case.dart';
+import 'package:todo_app/src/features/add_task/domain/use_cases/delete_task_use_case.dart';
 
 part 'board_state.dart';
 
@@ -31,16 +32,147 @@ class BoardCubit extends Cubit<BoardState> {
     required this.updateTaskCompletionUseCase,
     required this.updateTaskFavoriteUseCase,
     required this.deleteTaskUseCase,
-  }) : super(BoardInitial());
+  }) : super(BoardInitial()) {
+    debugPrint('🏗️ BoardCubit: Constructor called');
+  }
 
   static BoardCubit get(context) => BlocProvider.of<BoardCubit>(context);
 
-  BoardTabType currentTab = BoardTabType.all;
-  List<Task> currentTasks = [];
+  BoardTabType _currentTab = BoardTabType.all;
+  List<Task> _allTasks = [];
+  List<Task> _currentTasks = [];
 
-  // Load tasks based on current tab
-  Future<void> loadTasks() async {
-    switch (currentTab) {
+  BoardTabType get currentTab => _currentTab;
+
+  List<Task> get currentTasks => _currentTasks;
+
+  Future<void> loadAllTasks() async {
+    try {
+      debugPrint('🔄 BoardCubit: Starting loadAllTasks');
+      emit(BoardLoading());
+      _currentTab = BoardTabType.all;
+
+      debugPrint('🔄 BoardCubit: Calling getAllTasksUseCase...');
+      final tasks = await getAllTasksUseCase();
+
+      debugPrint(
+        '✅ BoardCubit: getAllTasksUseCase returned ${tasks.length} tasks',
+      );
+      for (var task in tasks) {
+        debugPrint(
+          '📋 Task: ${task.id} - ${task.title} (completed: ${task.isCompleted}, favorite: ${task.isFavorite})',
+        );
+      }
+
+      _allTasks = tasks;
+      _currentTasks = tasks;
+
+      debugPrint(
+        '✅ BoardCubit: Emitting BoardTasksLoaded with ${tasks.length} tasks',
+      );
+      emit(BoardTasksLoaded(tasks, _currentTab));
+    } catch (e, stackTrace) {
+      debugPrint('❌ BoardCubit: Error loading all tasks: $e');
+      debugPrint('❌ BoardCubit: Stack trace: $stackTrace');
+      emit(BoardError('Failed to load tasks: $e'));
+    }
+  }
+
+  Future<void> loadCompletedTasks() async {
+    try {
+      debugPrint('🔄 BoardCubit: Starting loadCompletedTasks');
+      emit(BoardLoading());
+      _currentTab = BoardTabType.completed;
+
+      debugPrint('🔄 BoardCubit: Calling getCompletedTasksUseCase...');
+      final tasks = await getCompletedTasksUseCase();
+
+      debugPrint(
+        '✅ BoardCubit: getCompletedTasksUseCase returned ${tasks.length} completed tasks',
+      );
+      _currentTasks = tasks;
+
+      debugPrint(
+        '✅ BoardCubit: Emitting BoardTasksLoaded with ${tasks.length} completed tasks',
+      );
+      emit(BoardTasksLoaded(tasks, _currentTab));
+    } catch (e, stackTrace) {
+      debugPrint('❌ BoardCubit: Error loading completed tasks: $e');
+      debugPrint('❌ BoardCubit: Stack trace: $stackTrace');
+      emit(BoardError('Failed to load completed tasks: $e'));
+    }
+  }
+
+  Future<void> loadUncompletedTasks() async {
+    try {
+      debugPrint('🔄 BoardCubit: Starting loadUncompletedTasks');
+      emit(BoardLoading());
+      _currentTab = BoardTabType.uncompleted;
+
+      debugPrint('🔄 BoardCubit: Calling getUncompletedTasksUseCase...');
+      final tasks = await getUncompletedTasksUseCase();
+
+      debugPrint(
+        '✅ BoardCubit: getUncompletedTasksUseCase returned ${tasks.length} uncompleted tasks',
+      );
+      _currentTasks = tasks;
+
+      debugPrint(
+        '✅ BoardCubit: Emitting BoardTasksLoaded with ${tasks.length} uncompleted tasks',
+      );
+      emit(BoardTasksLoaded(tasks, _currentTab));
+    } catch (e, stackTrace) {
+      debugPrint('❌ BoardCubit: Error loading uncompleted tasks: $e');
+      debugPrint('❌ BoardCubit: Stack trace: $stackTrace');
+      emit(BoardError('Failed to load uncompleted tasks: $e'));
+    }
+  }
+
+  Future<void> loadFavoriteTasks() async {
+    try {
+      debugPrint('🔄 BoardCubit: Starting loadFavoriteTasks');
+      emit(BoardLoading());
+      _currentTab = BoardTabType.favorite;
+
+      debugPrint('🔄 BoardCubit: Calling getFavoriteTasksUseCase...');
+      final tasks = await getFavoriteTasksUseCase();
+
+      debugPrint(
+        '✅ BoardCubit: getFavoriteTasksUseCase returned ${tasks.length} favorite tasks',
+      );
+      _currentTasks = tasks;
+
+      debugPrint(
+        '✅ BoardCubit: Emitting BoardTasksLoaded with ${tasks.length} favorite tasks',
+      );
+      emit(BoardTasksLoaded(tasks, _currentTab));
+    } catch (e, stackTrace) {
+      debugPrint('❌ BoardCubit: Error loading favorite tasks: $e');
+      debugPrint('❌ BoardCubit: Stack trace: $stackTrace');
+      emit(BoardError('Failed to load favorite tasks: $e'));
+    }
+  }
+
+  void setCurrentTab(BoardTabType tab) {
+    debugPrint(
+      '📱 BoardCubit: setCurrentTab called with: $tab (current: $_currentTab)',
+    );
+
+    if (_currentTab != tab) {
+      _currentTab = tab;
+      emit(BoardTabChanged(tab));
+      _loadTasksForCurrentTab();
+    } else {
+      debugPrint('📱 BoardCubit: Tab unchanged, not reloading');
+    }
+  }
+
+  Future<void> _loadTasksForCurrentTab() async {
+    debugPrint(
+      '🔄 BoardCubit: _loadTasksForCurrentTab - loading for $_currentTab',
+    );
+
+    switch (_currentTab) {
       case BoardTabType.all:
         await loadAllTasks();
         break;
@@ -56,139 +188,105 @@ class BoardCubit extends Cubit<BoardState> {
     }
   }
 
-  Future<void> loadAllTasks() async {
-    try {
-      emit(BoardLoading());
-      currentTab = BoardTabType.all;
-      final tasks = await getAllTasksUseCase();
-      currentTasks = tasks;
-      emit(BoardTasksLoaded(tasks, currentTab));
-    } catch (e) {
-      emit(BoardError(e.toString()));
-    }
-  }
-
-  Future<void> loadCompletedTasks() async {
-    try {
-      emit(BoardLoading());
-      currentTab = BoardTabType.completed;
-      final tasks = await getCompletedTasksUseCase();
-      currentTasks = tasks;
-      emit(BoardTasksLoaded(tasks, currentTab));
-    } catch (e) {
-      emit(BoardError(e.toString()));
-    }
-  }
-
-  Future<void> loadUncompletedTasks() async {
-    try {
-      emit(BoardLoading());
-      currentTab = BoardTabType.uncompleted;
-      final tasks = await getUncompletedTasksUseCase();
-      currentTasks = tasks;
-      emit(BoardTasksLoaded(tasks, currentTab));
-    } catch (e) {
-      emit(BoardError(e.toString()));
-    }
-  }
-
-  Future<void> loadFavoriteTasks() async {
-    try {
-      emit(BoardLoading());
-      currentTab = BoardTabType.favorite;
-      final tasks = await getFavoriteTasksUseCase();
-      currentTasks = tasks;
-      emit(BoardTasksLoaded(tasks, currentTab));
-    } catch (e) {
-      emit(BoardError(e.toString()));
-    }
-  }
-
   Future<void> toggleTaskCompletion(int taskId, bool isCompleted) async {
     try {
+      debugPrint(
+        '🔄 BoardCubit: Toggling task $taskId completion to $isCompleted',
+      );
+
       // Optimistic update
-      final taskIndex = currentTasks.indexWhere((task) => task.id == taskId);
-      if (taskIndex != -1) {
-        final updatedTask = currentTasks[taskIndex].copyWith(
-          isCompleted: isCompleted,
-        );
-        currentTasks[taskIndex] = updatedTask;
-        emit(BoardTasksLoaded(List.from(currentTasks), currentTab));
-      }
+      _updateTaskInCurrentList(
+        taskId,
+        (task) => task.copyWith(isCompleted: isCompleted),
+      );
+      emit(BoardTasksLoaded(_currentTasks, _currentTab));
 
       // Update in repository
       await updateTaskCompletionUseCase(taskId, isCompleted);
 
-      // Reload to ensure consistency
-      await loadTasks();
+      debugPrint('✅ BoardCubit: Task completion updated successfully');
+
+      // Reload current tab to ensure consistency
+      await _loadTasksForCurrentTab();
     } catch (e) {
+      debugPrint('❌ BoardCubit: Error toggling task completion: $e');
       // Revert optimistic update on error
-      await loadTasks();
-      emit(BoardError('Failed to update task: ${e.toString()}'));
+      await _loadTasksForCurrentTab();
+      emit(BoardError('Failed to update task: $e'));
     }
   }
 
   Future<void> toggleTaskFavorite(int taskId, bool isFavorite) async {
     try {
+      debugPrint(
+        '🔄 BoardCubit: Toggling task $taskId favorite to $isFavorite',
+      );
+
       // Optimistic update
-      final taskIndex = currentTasks.indexWhere((task) => task.id == taskId);
-      if (taskIndex != -1) {
-        final updatedTask = currentTasks[taskIndex].copyWith(
-          isFavorite: isFavorite,
-        );
-        currentTasks[taskIndex] = updatedTask;
-        emit(BoardTasksLoaded(List.from(currentTasks), currentTab));
-      }
+      _updateTaskInCurrentList(
+        taskId,
+        (task) => task.copyWith(isFavorite: isFavorite),
+      );
+      emit(BoardTasksLoaded(_currentTasks, _currentTab));
 
       // Update in repository
       await updateTaskFavoriteUseCase(taskId, isFavorite);
 
-      // Reload to ensure consistency
-      await loadTasks();
+      debugPrint('✅ BoardCubit: Task favorite updated successfully');
+
+      // Reload current tab to ensure consistency
+      await _loadTasksForCurrentTab();
     } catch (e) {
+      debugPrint('❌ BoardCubit: Error toggling task favorite: $e');
       // Revert optimistic update on error
-      await loadTasks();
-      emit(BoardError('Failed to update task favorite: ${e.toString()}'));
+      await _loadTasksForCurrentTab();
+      emit(BoardError('Failed to update task favorite: $e'));
     }
   }
 
   Future<void> deleteTask(int taskId) async {
     try {
+      debugPrint('🗑️ BoardCubit: Deleting task $taskId');
       emit(BoardLoading());
 
       await deleteTaskUseCase(taskId);
 
-      // Reload current tab
-      await loadTasks();
+      // Remove from local lists
+      _currentTasks.removeWhere((task) => task.id == taskId);
+      _allTasks.removeWhere((task) => task.id == taskId);
+
+      debugPrint('✅ BoardCubit: Task deleted successfully');
 
       emit(BoardTaskDeleted(taskId));
+      emit(BoardTasksLoaded(_currentTasks, _currentTab));
     } catch (e) {
-      emit(BoardError('Failed to delete task: ${e.toString()}'));
+      debugPrint('❌ BoardCubit: Error deleting task: $e');
+      emit(BoardError('Failed to delete task: $e'));
     }
   }
 
-  void setCurrentTab(BoardTabType tab) {
-    currentTab = tab;
-    emit(BoardTabChanged(tab));
+  Future<void> refreshTasks() async {
+    debugPrint('🔄 BoardCubit: Refreshing tasks for current tab: $_currentTab');
+    await _loadTasksForCurrentTab();
   }
 
   // Helper methods
-  Task? getTaskById(int id) {
-    try {
-      return currentTasks.firstWhere((task) => task.id == id);
-    } catch (e) {
-      return null;
+  void _updateTaskInCurrentList(int taskId, Task Function(Task) update) {
+    final index = _currentTasks.indexWhere((task) => task.id == taskId);
+    if (index != -1) {
+      _currentTasks[index] = update(_currentTasks[index]);
     }
   }
 
-  int get tasksCount => currentTasks.length;
+  // Statistics
+  int get totalTasks => _allTasks.length;
 
-  int get completedTasksCount =>
-      currentTasks.where((task) => task.isCompleted).length;
+  int get completedTasks => _allTasks.where((task) => task.isCompleted).length;
 
-  int get uncompletedTasksCount =>
-      currentTasks.where((task) => !task.isCompleted).length;
+  int get uncompletedTasks =>
+      _allTasks.where((task) => !task.isCompleted).length;
 
-  int get favoriteTasksCount =>
-      currentTasks.where((task) => task.isFavorite).length;
+  int get favoriteTasks => _allTasks.where((task) => task.isFavorite).length;
+
+  int get currentTabTaskCount => _currentTasks.length;
 }

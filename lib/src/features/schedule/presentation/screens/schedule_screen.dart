@@ -1,4 +1,4 @@
-// presentation/screens/schedule_screen.dart
+// presentation/screens/schedule_screen.dart (Fixed initialization)
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:todo_app/src/core/utils/app_strings.dart';
@@ -17,9 +17,15 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   @override
   void initState() {
     super.initState();
-    // Load tasks for today when screen initializes
+    debugPrint('🔧 ScheduleScreen: initState called');
+
+    // Ensure cubit loads tasks immediately when screen opens
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<ScheduleCubit>().loadTasksForDate(DateTime.now());
+      final cubit = context.read<ScheduleCubit>();
+      debugPrint(
+        '🔧 ScheduleScreen: Loading tasks for today: ${DateTime.now()}',
+      );
+      cubit.loadTasksForDate(DateTime.now());
     });
   }
 
@@ -27,6 +33,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBarWidget(
+        hasLeadingIcon: true,
         leadingIcon: Icons.arrow_back,
         leadingIconOnTap: () => Navigator.pop(context),
         title: AppStrings.scheduleScreenTitle,

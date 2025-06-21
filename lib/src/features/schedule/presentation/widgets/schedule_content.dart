@@ -1,4 +1,4 @@
-// presentation/widgets/schedule_content.dart
+// presentation/widgets/schedule_content.dart (Fixed with proper debugging)
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -16,15 +16,24 @@ class ScheduleContent extends StatefulWidget {
 
 class _ScheduleContentState extends State<ScheduleContent> {
   @override
+  void initState() {
+    super.initState();
+    debugPrint('🔧 ScheduleContent: initState called');
+  }
+
+  @override
   Widget build(BuildContext context) {
     return BlocListener<ScheduleCubit, ScheduleState>(
       listener: (context, state) {
+        debugPrint('🔧 ScheduleContent: State changed to ${state.runtimeType}');
+
         if (state is ScheduleError) {
+          debugPrint('❌ ScheduleContent: Error state - ${state.message}');
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(state.message),
               backgroundColor: Colors.red,
-              duration: const Duration(seconds: 3),
+              duration: const Duration(seconds: 4),
               action: SnackBarAction(
                 label: 'Retry',
                 textColor: Colors.white,
@@ -35,6 +44,12 @@ class _ScheduleContentState extends State<ScheduleContent> {
             ),
           );
         }
+
+        if (state is ScheduleTasksLoaded) {
+          debugPrint(
+            '✅ ScheduleContent: Tasks loaded - ${state.scheduleDay.tasks.length} tasks',
+          );
+        }
       },
       child: Column(
         children: [
@@ -42,11 +57,16 @@ class _ScheduleContentState extends State<ScheduleContent> {
           BlocBuilder<ScheduleCubit, ScheduleState>(
             builder: (context, state) {
               final cubit = context.read<ScheduleCubit>();
+              debugPrint(
+                '🔧 ScheduleContent: Building date picker, selected: ${cubit.selectedDate}',
+              );
+
               return DatePickerWidget(
                 startDate: DateTime.now().subtract(const Duration(days: 365)),
                 selectedDate: cubit.selectedDate,
                 initialSelectedDate: cubit.selectedDate,
                 onDateChanged: (date) {
+                  debugPrint('📅 ScheduleContent: Date changed to: $date');
                   context.read<ScheduleCubit>().loadTasksForDate(date);
                 },
               );
@@ -59,6 +79,16 @@ class _ScheduleContentState extends State<ScheduleContent> {
           BlocBuilder<ScheduleCubit, ScheduleState>(
             builder: (context, state) {
               final cubit = context.read<ScheduleCubit>();
+              int taskCount = 0;
+
+              if (state is ScheduleTasksLoaded) {
+                taskCount = state.scheduleDay.totalCount;
+              }
+
+              debugPrint(
+                '🔧 ScheduleContent: Building header, task count: $taskCount',
+              );
+
               return Padding(
                 padding: const EdgeInsets.all(20),
                 child: Row(
@@ -71,22 +101,48 @@ class _ScheduleContentState extends State<ScheduleContent> {
                         fontSize: 14.h,
                       ),
                     ),
-                    if (state is ScheduleTasksLoaded) ...[
-                      Text(
-                        '${state.scheduleDay.totalCount} tasks',
-                        style: TextStyle(fontSize: 12.h),
+                    Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 12.w,
+                        vertical: 4.h,
                       ),
-                    ] else ...[
-                      Text('0 tasks', style: TextStyle(fontSize: 12.h)),
-                    ],
+                      decoration: BoxDecoration(
+                        color: taskCount > 0
+                            ? Colors.blue.withOpacity(0.1)
+                            : Colors.grey.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: taskCount > 0 ? Colors.blue : Colors.grey,
+                          width: 1,
+                        ),
+                      ),
+                      child: Text(
+                        '$taskCount tasks',
+                        style: TextStyle(
+                          fontSize: 12.h,
+                          fontWeight: FontWeight.w600,
+                          color: taskCount > 0
+                              ? Colors.blue[700]
+                              : Colors.grey[700],
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               );
             },
           ),
 
-          // Schedule stats
-          const ScheduleStatsWidget(),
+          // Schedule stats (only show if has tasks)
+          BlocBuilder<ScheduleCubit, ScheduleState>(
+            builder: (context, state) {
+              if (state is ScheduleTasksLoaded &&
+                  state.scheduleDay.totalCount > 0) {
+                return const ScheduleStatsWidget();
+              }
+              return const SizedBox.shrink();
+            },
+          ),
 
           // Tasks list
           Expanded(
@@ -103,16 +159,31 @@ class _ScheduleContentState extends State<ScheduleContent> {
   Widget _buildTasksList() {
     return BlocBuilder<ScheduleCubit, ScheduleState>(
       builder: (context, state) {
+        debugPrint(
+          '🔧 ScheduleContent: Building tasks list, state: ${state.runtimeType}',
+        );
+
         if (state is ScheduleLoading) {
-          return const Center(child: CircularProgressIndicator());
+          debugPrint('⏳ ScheduleContent: Showing loading state');
+          return const Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 16),
+                Text('Loading tasks...'),
+              ],
+            ),
+          );
         }
 
         if (state is ScheduleError) {
+          debugPrint('❌ ScheduleContent: Showing error state');
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.error_outline, size: 64, color: Colors.grey[400]),
+                Icon(Icons.error_outline, size: 64, color: Colors.red[300]),
                 const SizedBox(height: 16),
                 Text(
                   'Error loading tasks',
@@ -136,7 +207,12 @@ class _ScheduleContentState extends State<ScheduleContent> {
         }
 
         if (state is ScheduleTasksLoaded) {
+          debugPrint(
+            '✅ ScheduleContent: Tasks loaded, count: ${state.scheduleDay.tasks.length}',
+          );
+
           if (state.scheduleDay.tasks.isEmpty) {
+            debugPrint('📭 ScheduleContent: No tasks for this day');
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -149,7 +225,7 @@ class _ScheduleContentState extends State<ScheduleContent> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Schedule some tasks to see them here',
+                    'Your schedule is clear for today!',
                     style: TextStyle(fontSize: 12, color: Colors.grey[500]),
                   ),
                 ],
@@ -157,14 +233,24 @@ class _ScheduleContentState extends State<ScheduleContent> {
             );
           }
 
+          debugPrint(
+            '📋 ScheduleContent: Rendering ${state.scheduleDay.tasks.length} tasks',
+          );
           return ListView.builder(
             physics: const BouncingScrollPhysics(),
             itemCount: state.scheduleDay.tasks.length,
             itemBuilder: (context, index) {
               final task = state.scheduleDay.tasks[index];
+              debugPrint(
+                '📋 ScheduleContent: Rendering task ${task.id}: ${task.title}',
+              );
+
               return ScheduleItem(
                 task: task,
                 onCompletionChanged: (isCompleted) {
+                  debugPrint(
+                    '🔄 ScheduleContent: Task completion changed - ${task.id}: $isCompleted',
+                  );
                   context.read<ScheduleCubit>().toggleTaskCompletion(
                     task.id,
                     isCompleted ?? false,
@@ -175,6 +261,7 @@ class _ScheduleContentState extends State<ScheduleContent> {
           );
         }
 
+        debugPrint('❓ ScheduleContent: Unknown state, showing empty');
         return const SizedBox.shrink();
       },
     );

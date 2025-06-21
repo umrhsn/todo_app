@@ -25,6 +25,6 @@ class _CompletedTabBarViewState extends State<CompletedTabBarView> {
 
   @override
   Widget build(BuildContext context) {
-    return const TabViewWidget();
+    return const TabViewWidget(tabType: BoardTabType.completed);
   }
 }
