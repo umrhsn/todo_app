@@ -1,4 +1,4 @@
-// presentation/widgets/compact_board_item.dart (Fixed all UI issues)
+// Fixed board_item.dart - Proper color mapping and enhanced UI
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -16,50 +16,80 @@ class BoardItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final taskColor = AppColors
-        .tasksColorsList[task.colorIndex % AppColors.tasksColorsList.length];
+    // Fixed: Ensure color index is within bounds
+    final colorIndex = task.colorIndex.clamp(
+      0,
+      AppColors.tasksColorsList.length - 1,
+    );
+    final taskColor = AppColors.tasksColorsList[colorIndex];
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
+    debugPrint(
+      '🎨 BoardItem: Rendering task ${task.id} with color index $colorIndex (${task.colorIndex})',
+    );
+    debugPrint('🎨 BoardItem: Task color: $taskColor');
+
     return Container(
-      margin: EdgeInsets.symmetric(horizontal: 2.w), // Minimal margin
+      margin: EdgeInsets.symmetric(horizontal: 4.w, vertical: 4.h),
       decoration: BoxDecoration(
         color: isDarkMode ? Colors.grey[850] : Colors.white,
-        borderRadius: BorderRadius.circular(12.r),
-        border: Border.all(color: taskColor.withOpacity(0.2), width: 1),
+        borderRadius: BorderRadius.circular(16.r),
+        border: Border.all(color: taskColor.withOpacity(0.3), width: 1.5),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: taskColor.withOpacity(0.15),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
             blurRadius: 4,
             offset: const Offset(0, 1),
           ),
         ],
       ),
-      child: InkWell(
-        onTap: () => _showTaskDetails(context),
-        borderRadius: BorderRadius.circular(12.r),
-        child: Padding(
-          padding: EdgeInsets.all(12.w),
-          child: IntrinsicHeight(
-            // Fixed: Prevents overflow
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _showTaskDetails(context),
+          borderRadius: BorderRadius.circular(16.r),
+          child: Padding(
+            padding: EdgeInsets.all(16.w),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Color indicator (fixed width)
+                // Enhanced color indicator
                 Container(
-                  width: 3.w,
-                  height: 36.h,
+                  width: 4.w,
+                  height: 50.h,
                   decoration: BoxDecoration(
-                    color: taskColor,
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [taskColor, taskColor.withOpacity(0.7)],
+                    ),
                     borderRadius: BorderRadius.circular(2.r),
+                    boxShadow: [
+                      BoxShadow(
+                        color: taskColor.withOpacity(0.3),
+                        blurRadius: 4,
+                        offset: const Offset(1, 0),
+                      ),
+                    ],
                   ),
                 ),
 
-                SizedBox(width: 12.w),
+                SizedBox(width: 16.w),
 
-                // Checkbox (fixed size)
-                SizedBox(
-                  width: 24.w,
-                  height: 24.h,
+                // Enhanced checkbox
+                Container(
+                  decoration: BoxDecoration(
+                    color: task.isCompleted
+                        ? taskColor.withOpacity(0.1)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(6.r),
+                  ),
+                  padding: EdgeInsets.all(2.w),
                   child: CheckboxWidget(
                     isChecked: task.isCompleted,
                     onChanged: (value) {
@@ -72,175 +102,201 @@ class BoardItem extends StatelessWidget {
                     },
                     activeColor: taskColor,
                     borderColor: taskColor,
-                    scale: 0.9, // Fixed: Provided scale value
+                    scale: 1.0,
                   ),
                 ),
 
-                SizedBox(width: 12.w),
+                SizedBox(width: 16.w),
 
-                // Task content (flexible with constraints)
+                // Enhanced task content
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Title (constrained)
+                      // Title with enhanced styling
                       Text(
                         task.title,
                         style: TextStyle(
-                          fontSize: 14.sp,
-                          fontWeight: FontWeight.w500,
+                          fontSize: 16.sp,
+                          fontWeight: FontWeight.w600,
                           decoration: task.isCompleted
                               ? TextDecoration.lineThrough
                               : TextDecoration.none,
-                          color: task.isCompleted ? Colors.grey[500] : null,
+                          color: task.isCompleted
+                              ? Colors.grey[500]
+                              : (isDarkMode ? Colors.white : Colors.black87),
+                          height: 1.2,
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
 
-                      // Compact time info (single line with ellipsis)
-                      if (task.startTime.isNotEmpty) ...[
+                      SizedBox(height: 8.h),
+
+                      // Enhanced time and date info
+                      if (task.startTime.isNotEmpty &&
+                          task.endTime.isNotEmpty) ...[
+                        _buildInfoRow(
+                          icon: Icons.schedule,
+                          text: '${task.startTime} - ${task.endTime}',
+                          color: taskColor,
+                        ),
                         SizedBox(height: 4.h),
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.access_time,
-                              size: 12.sp,
-                              color: Colors.grey[600],
-                            ),
-                            SizedBox(width: 4.w),
-                            Flexible(
-                              // Fixed: Use Flexible to prevent overflow
-                              child: Text(
-                                '${task.startTime} - ${task.endTime}${task.date.isNotEmpty ? " • ${_formatDate(task.date)}" : ""}',
-                                style: TextStyle(
-                                  fontSize: 11.sp,
-                                  color: Colors.grey[600],
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
+                      ],
+
+                      if (task.date.isNotEmpty) ...[
+                        _buildInfoRow(
+                          icon: Icons.calendar_today,
+                          text: _formatDate(task.date),
+                          color: Colors.grey[600]!,
+                        ),
+                        SizedBox(height: 4.h),
+                      ],
+
+                      if (task.reminder.isNotEmpty &&
+                          task.reminder != 'None') ...[
+                        _buildInfoRow(
+                          icon: Icons.notifications_outlined,
+                          text: task.reminder,
+                          color: Colors.orange[600]!,
                         ),
                       ],
                     ],
                   ),
                 ),
 
-                SizedBox(width: 8.w),
+                SizedBox(width: 12.w),
 
-                // Compact actions (fixed width)
-                SizedBox(
-                  width: 60.w, // Fixed: Constrain actions width
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      // Favorite indicator (fixed size)
-                      if (task.isFavorite) ...[
-                        Icon(Icons.favorite, color: Colors.red, size: 14.sp),
-                        SizedBox(width: 4.w),
-                      ],
-
-                      // Menu button (fixed size)
-                      SizedBox(
-                        width: 24.w,
-                        height: 24.h,
-                        child: PopupMenuButton<String>(
-                          icon: Icon(
-                            Icons.more_vert,
-                            size: 16.sp,
-                            color: Colors.grey[600],
-                          ),
-                          onSelected: (value) =>
-                              _handleMenuAction(value, context),
-                          padding: EdgeInsets.zero,
-                          iconSize: 16.sp,
-                          itemBuilder: (context) => [
-                            PopupMenuItem<String>(
-                              value: task.isCompleted
-                                  ? 'uncomplete'
-                                  : 'complete',
-                              height: 36.h,
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    task.isCompleted
-                                        ? Icons.radio_button_unchecked
-                                        : Icons.check_circle,
-                                    size: 14.sp,
-                                    color: task.isCompleted
-                                        ? Colors.orange
-                                        : Colors.green,
-                                  ),
-                                  SizedBox(width: 8.w),
-                                  Text(
-                                    task.isCompleted
-                                        ? 'Mark Pending'
-                                        : 'Complete',
-                                    style: TextStyle(fontSize: 12.sp),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            PopupMenuItem<String>(
-                              value: task.isFavorite
-                                  ? 'unfavorite'
-                                  : 'favorite',
-                              height: 36.h,
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    task.isFavorite
-                                        ? Icons.favorite_border
-                                        : Icons.favorite,
-                                    size: 14.sp,
-                                    color: Colors.red,
-                                  ),
-                                  SizedBox(width: 8.w),
-                                  Text(
-                                    task.isFavorite ? 'Unfavorite' : 'Favorite',
-                                    style: TextStyle(fontSize: 12.sp),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const PopupMenuDivider(),
-                            PopupMenuItem<String>(
-                              value: 'delete',
-                              height: 36.h,
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Icons.delete_outline,
-                                    size: 14.sp,
-                                    color: Colors.red,
-                                  ),
-                                  SizedBox(width: 8.w),
-                                  Text(
-                                    'Delete',
-                                    style: TextStyle(
-                                      color: Colors.red,
-                                      fontSize: 12.sp,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
+                // Enhanced actions column
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Favorite indicator with animation
+                    if (task.isFavorite) ...[
+                      Container(
+                        padding: EdgeInsets.all(4.w),
+                        decoration: BoxDecoration(
+                          color: Colors.red.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(6.r),
+                        ),
+                        child: Icon(
+                          Icons.favorite,
+                          color: Colors.red,
+                          size: 16.sp,
                         ),
                       ),
+                      SizedBox(height: 8.h),
                     ],
-                  ),
+
+                    // Enhanced menu button
+                    Container(
+                      decoration: BoxDecoration(
+                        color: taskColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8.r),
+                      ),
+                      child: PopupMenuButton<String>(
+                        icon: Icon(
+                          Icons.more_vert,
+                          size: 18.sp,
+                          color: taskColor,
+                        ),
+                        onSelected: (value) =>
+                            _handleMenuAction(value, context),
+                        padding: EdgeInsets.all(4.w),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12.r),
+                        ),
+                        itemBuilder: (context) => [
+                          _buildPopupMenuItem(
+                            value: task.isCompleted ? 'uncomplete' : 'complete',
+                            icon: task.isCompleted
+                                ? Icons.radio_button_unchecked
+                                : Icons.check_circle,
+                            text: task.isCompleted
+                                ? 'Mark Pending'
+                                : 'Complete',
+                            color: task.isCompleted
+                                ? Colors.orange
+                                : Colors.green,
+                          ),
+                          _buildPopupMenuItem(
+                            value: task.isFavorite ? 'unfavorite' : 'favorite',
+                            icon: task.isFavorite
+                                ? Icons.favorite_border
+                                : Icons.favorite,
+                            text: task.isFavorite ? 'Unfavorite' : 'Favorite',
+                            color: Colors.red,
+                          ),
+                          const PopupMenuDivider(),
+                          _buildPopupMenuItem(
+                            value: 'delete',
+                            icon: Icons.delete_outline,
+                            text: 'Delete',
+                            color: Colors.red,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildInfoRow({
+    required IconData icon,
+    required String text,
+    required Color color,
+  }) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 12.sp, color: color),
+        SizedBox(width: 6.w),
+        Flexible(
+          child: Text(
+            text,
+            style: TextStyle(
+              fontSize: 12.sp,
+              color: color,
+              fontWeight: FontWeight.w500,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
+
+  PopupMenuItem<String> _buildPopupMenuItem({
+    required String value,
+    required IconData icon,
+    required String text,
+    required Color color,
+  }) {
+    return PopupMenuItem<String>(
+      value: value,
+      height: 40.h,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16.sp, color: color),
+          SizedBox(width: 12.w),
+          Text(
+            text,
+            style: TextStyle(
+              fontSize: 14.sp,
+              color: value == 'delete' ? Colors.red : null,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -273,19 +329,25 @@ class BoardItem extends StatelessWidget {
       builder: (BuildContext dialogContext) {
         return AlertDialog(
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16.r),
+            borderRadius: BorderRadius.circular(20.r),
           ),
-          contentPadding: EdgeInsets.all(20.w),
+          contentPadding: EdgeInsets.all(24.w),
           title: Row(
             children: [
               Icon(
                 Icons.warning_amber_rounded,
                 color: Colors.orange,
-                size: 20.sp,
+                size: 24.sp,
               ),
-              SizedBox(width: 8.w),
+              SizedBox(width: 12.w),
               Expanded(
-                child: Text('Delete Task', style: TextStyle(fontSize: 16.sp)),
+                child: Text(
+                  'Delete Task',
+                  style: TextStyle(
+                    fontSize: 18.sp,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
             ],
           ),
@@ -293,23 +355,37 @@ class BoardItem extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Delete this task?', style: TextStyle(fontSize: 14.sp)),
-              SizedBox(height: 8.h),
+              Text(
+                'Are you sure you want to delete this task?',
+                style: TextStyle(fontSize: 16.sp),
+              ),
+              SizedBox(height: 12.h),
               Container(
-                padding: EdgeInsets.all(8.w),
+                padding: EdgeInsets.all(12.w),
                 decoration: BoxDecoration(
                   color: Colors.grey[100],
-                  borderRadius: BorderRadius.circular(8.r),
+                  borderRadius: BorderRadius.circular(12.r),
+                  border: Border.all(color: Colors.grey[300]!),
                 ),
                 child: Text(
                   task.title,
                   style: TextStyle(
                     fontStyle: FontStyle.italic,
                     color: Colors.grey[700],
-                    fontSize: 12.sp,
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.w500,
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              SizedBox(height: 8.h),
+              Text(
+                'This action cannot be undone.',
+                style: TextStyle(
+                  fontSize: 12.sp,
+                  color: Colors.red[600],
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ],
@@ -317,7 +393,13 @@ class BoardItem extends StatelessWidget {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(),
-              child: Text('Cancel', style: TextStyle(fontSize: 13.sp)),
+              style: TextButton.styleFrom(
+                padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
+              ),
+              child: Text(
+                'Cancel',
+                style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600),
+              ),
             ),
             ElevatedButton(
               onPressed: () {
@@ -327,9 +409,15 @@ class BoardItem extends StatelessWidget {
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red,
                 foregroundColor: Colors.white,
-                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+                padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8.r),
+                ),
               ),
-              child: Text('Delete', style: TextStyle(fontSize: 13.sp)),
+              child: Text(
+                'Delete',
+                style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.bold),
+              ),
             ),
           ],
         );
@@ -341,9 +429,7 @@ class BoardItem extends StatelessWidget {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
-      ),
+      backgroundColor: Colors.transparent,
       builder: (context) => TaskDetailsBottomSheet(task: task),
     );
   }
@@ -352,8 +438,24 @@ class BoardItem extends StatelessWidget {
     try {
       final parts = date.split('-');
       if (parts.length == 3) {
+        final year = int.parse(parts[0]);
         final month = int.parse(parts[1]);
         final day = int.parse(parts[2]);
+
+        final now = DateTime.now();
+        final taskDate = DateTime(year, month, day);
+        final today = DateTime(now.year, now.month, now.day);
+        final tomorrow = today.add(const Duration(days: 1));
+        final yesterday = today.subtract(const Duration(days: 1));
+
+        if (taskDate == today) {
+          return 'Today';
+        } else if (taskDate == tomorrow) {
+          return 'Tomorrow';
+        } else if (taskDate == yesterday) {
+          return 'Yesterday';
+        }
+
         const months = [
           '',
           'Jan',
@@ -372,7 +474,7 @@ class BoardItem extends StatelessWidget {
         return '${months[month]} $day';
       }
     } catch (e) {
-      // Fallback to original date if parsing fails
+      debugPrint('Error formatting date: $e');
     }
     return date;
   }
